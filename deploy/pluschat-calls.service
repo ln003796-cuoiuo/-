@@ -1,0 +1,19 @@
+[Unit]
+Description=Pluschat Calls signaling server
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=pluschat
+Group=pluschat
+WorkingDirectory=/opt/pluschat-calls
+EnvironmentFile=/opt/pluschat-calls/.env
+ExecStart=/opt/pluschat-calls/pluschat-calls
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+[Install]
+WantedBy=multi-user.target
