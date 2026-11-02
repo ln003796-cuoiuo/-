@@ -31,7 +31,7 @@ func wsHandler(w http.ResponseWriter,r *http.Request){conn,e:=upgrader.Upgrade(w
  _,e=hub.db.Exec("INSERT INTO consumed_tokens(jti,user_id,expires_at) VALUES(?,?,FROM_UNIXTIME(?))",cl.JTI,cl.Sub,cl.Exp);if e!=nil{_ = conn.WriteJSON(map[string]string{"type":"error","error":"token_already_used"});conn.Close();return}
  c:=&Client{conn:conn,user:cl.Sub,room:cl.Room,send:make(chan []byte,64)};n:=hub.join(c);if n>8{hub.leave(c);_ = conn.WriteJSON(map[string]string{"type":"error","error":"room_full"});conn.Close();return}
  defer func(){hub.leave(c);for _,p:=range hub.peers(c){send(p,map[string]any{"type":"peer-left","peer":c.user})};close(c.send);conn.Close()}();conn.SetReadDeadline(time.Time{})
- for _,p:=range hub.peers(c){send(c,map[string]any{"type":"peer-joined","peer":p.user});send(p,map[string]any{"type":"peer-joined","peer":c.user})}
+ for _,p:=range hub.peers(c){send(c,map[string]any{"type":"peer-joined","peer":p.user})}
  go func(){for b:=range c.send{_ = conn.SetWriteDeadline(time.Now().Add(10*time.Second));if conn.WriteMessage(websocket.TextMessage,b)!=nil{return}}}()
  for{_,b,e:=conn.ReadMessage();if e!=nil{return};var msg map[string]any;if json.Unmarshal(b,&msg)!=nil{continue};t,_:=msg["type"].(string);if t!="offer"&&t!="answer"&&t!="ice"&&t!="hangup"&&t!="media-state"{continue};msg["from"]=c.user;to,_:=msg["to"].(string);for _,p:=range hub.peers(c){if to==""||to==p.user{send(p,msg)}};if t=="hangup"{return}}
 }
