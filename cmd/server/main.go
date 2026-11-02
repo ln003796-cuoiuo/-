@@ -10,6 +10,7 @@ import (
  "log"
  "net/http"
  "os"
+ "strconv"
  "strings"
  "sync"
  "time"
@@ -29,7 +30,7 @@ func(h *Hub)peers(c *Client)[]*Client{h.mu.RLock();defer h.mu.RUnlock();a:=[]*Cl
 func send(c *Client,v any){b,e:=json.Marshal(v);if e==nil{select{case c.send<-b:default:}}}
 func wsHandler(w http.ResponseWriter,r *http.Request){conn,e:=upgrader.Upgrade(w,r,nil);if e!=nil{return};conn.SetReadLimit(1<<20);conn.SetReadDeadline(time.Now().Add(10*time.Second));_,b,e:=conn.ReadMessage();if e!=nil{conn.Close();return};var a struct{Type,Token string};if json.Unmarshal(b,&a)!=nil||a.Type!="auth"{conn.Close();return};cl,e:=verify(a.Token);if e!=nil{_ = conn.WriteJSON(map[string]string{"type":"error","error":"invalid_token"});conn.Close();return}
  _,e=hub.db.Exec("INSERT INTO consumed_tokens(jti,user_id,expires_at) VALUES(?,?,FROM_UNIXTIME(?))",cl.JTI,cl.Sub,cl.Exp);if e!=nil{_ = conn.WriteJSON(map[string]string{"type":"error","error":"token_already_used"});conn.Close();return}
- c:=&Client{conn:conn,user:cl.Sub,room:cl.Room,send:make(chan []byte,64)};n:=hub.join(c);if n>8{hub.leave(c);_ = conn.WriteJSON(map[string]string{"type":"error","error":"room_full"});conn.Close();return}
+ c:=&Client{conn:conn,user:cl.Sub,room:cl.Room,send:make(chan []byte,64)};n:=hub.join(c);maxPeers,e:=strconv.Atoi(env("CALL_MAX_ROOM_SIZE","8"));if e!=nil||maxPeers<2||maxPeers>32{maxPeers=8};if n>maxPeers{hub.leave(c);_ = conn.WriteJSON(map[string]string{"type":"error","error":"room_full"});conn.Close();return}
  defer func(){hub.leave(c);for _,p:=range hub.peers(c){send(p,map[string]any{"type":"peer-left","peer":c.user})};close(c.send);conn.Close()}();conn.SetReadDeadline(time.Time{})
  for _,p:=range hub.peers(c){send(c,map[string]any{"type":"peer-joined","peer":p.user})}
  go func(){for b:=range c.send{_ = conn.SetWriteDeadline(time.Now().Add(10*time.Second));if conn.WriteMessage(websocket.TextMessage,b)!=nil{return}}}()
