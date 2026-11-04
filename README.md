@@ -11,7 +11,7 @@ Go WebSocket signaling + WebRTC mesh UI for Pluschat.
 ## Install
 1. Create MySQL database `calls`; grant the existing `admin` DB user access. Do not put passwords in Git.
 2. Run `database/schema.sql` in `calls`.
-3. Copy `public/*` into the document root of `звонки.плюсчат.рф`.
+3. Copy `public/*` into the document root of `xn--b1ajehof.xn--80avljg2a1c.xn--p1ai`.
 4. Copy `config.example` to a private environment file and set DB credentials and `CALL_TOKEN_SECRET`. It must exactly match Pluschat's `APP_SECRET`; never commit it.
 5. Build on Linux with Go 1.23+: `go mod download && go build -o pluschat-calls ./cmd/server`.
 6. Run the binary as a persistent service. Reverse proxy `/ws` (WebSocket upgrade) and `/health` to 127.0.0.1:8090.
